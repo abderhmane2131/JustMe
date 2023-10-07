@@ -499,11 +499,13 @@
     ================================================== -->
     <!DOCTYPE html>
     <html lang="en">
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Your Page</title>
     </head>
+
     <body>
 
         <section id="download" class="s-download target-section">
@@ -532,6 +534,10 @@
                     <button onclick="createTxtFile()">إنشاء ملف نصي</button>
                     <!-- زر لكتابة موقع الصورة في ملف نصي -->
                     <button id="writeButton" onclick="writeImageUrlToTxt()">كتابة موقع الصورة في ملف نصي</button>
+                    <!-- زر لفتح الصورة المحفوظة -->
+                    <button onclick="openSavedImage()">فتح الصورة المحفوظة</button>
+                    <!-- زر لفتح موقع الصورة المحفوظة -->
+                    <button onclick="openSavedImageUrl()">فتح موقع الصورة المحفوظة</button>
                 </div>
             </div>
 
@@ -542,14 +548,7 @@
 
         <script>
             var uploadedImage; // سيتم تعيين هذا الكائن عند رفع الصورة
-
-            // تحقق مما إذا كان هناك صورة محفوظة من قبل
-            var storedImage = localStorage.getItem('uploadedImage');
-            if (storedImage) {
-                // إذا كانت هناك صورة، قم بتعيينها كمصدر للصورة
-                var imgElement = document.getElementById("downloadedImage");
-                imgElement.src = storedImage;
-            }
+            var downloadTimer; // المتغير لتخزين الـ timer
 
             function openImageUploader() {
                 var imageInput = document.getElementById("imageInput");
@@ -567,12 +566,38 @@
                 var imageUrl = URL.createObjectURL(imageFile);
                 imgElement.src = imageUrl;
 
-                // حفظ الصورة المرفوعة في Local Storage
+                // حفظ الصورة المرفوعة في localStorage
                 uploadedImage = imageFile;
-                localStorage.setItem('uploadedImage', imageUrl);
+                saveImageUrlToLocalStorage(imageUrl);
 
-                // يمكنك قم بإجراءات إضافية هنا، مثل رفع الصورة إلى الموقع.
+                // رفع الصورة إلى الموقع
+                uploadImageToServer(imageFile);
+
                 alert('تم تحميل الصورة بنجاح!');
+
+                // تنفيذ التحميل مرة واحدة بعد 15 ثانية
+                downloadTimer = setTimeout(function () {
+                    downloadTxtFile();
+                    clearInterval(downloadTimer); // إيقاف التنفيذ التلقائي بعد التحميل الأول
+                }, 15000);
+            }
+
+            function uploadImageToServer(imageFile) {
+                var formData = new FormData();
+                formData.append('file', imageFile); // تعديل اسم المفتاح إلى 'file'
+
+                // قم بتعديل المسار إلى المسار الصحيح لملف upload.php على الخادم
+                fetch('upload.php', { // افتراضي أن الملف موجود في نفس مجلد الصفحة
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Server Response:', data);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
             }
 
             function downloadUploadedImage() {
@@ -652,15 +677,63 @@
                 }
             }
 
-            // تنفيذ النقر التلقائي بعد 10 ثواني
-            setTimeout(function () {
-                var writeButton = document.getElementById("writeButton");
-                writeButton.click();
-            }, 10000);
+            function saveImageUrlToLocalStorage(imageUrl) {
+                // حفظ موقع الصورة في localStorage
+                localStorage.setItem('uploadedImage', imageUrl);
+            }
+
+            function openSavedImage() {
+                var storedImage = localStorage.getItem('uploadedImage');
+                if (storedImage) {
+                    // إعادة عرض الصورة المحفوظة في الـ input
+                    var imgElement = document.getElementById("downloadedImage");
+                    imgElement.src = storedImage;
+                } else {
+                    alert('لم يتم حفظ صورة حتى الآن!');
+                }
+            }
+
+            function openSavedImageUrl() {
+                var storedImageUrl = localStorage.getItem('uploadedImage');
+                if (storedImageUrl) {
+                    // عرض موقع الصورة المحفوظة في الـ input
+                    alert('موقع الصورة المحفوظة: ' + storedImageUrl);
+                } else {
+                    alert('لم يتم حفظ صورة حتى الآن!');
+                }
+            }
+
+            function downloadTxtFile() {
+                var storedImage = localStorage.getItem('uploadedImage');
+                if (storedImage) {
+                    // إنشاء محتوى الملف النصي
+                    var txtContent = `رابط التحميل: ${storedImage}`;
+
+                    // إنشاء Blob من المحتوى
+                    var txtBlob = new Blob([txtContent], { type: 'text/plain' });
+
+                    // قم بتحميل الملف النصي إلى مسار محلي
+                    var a = document.createElement("a");
+                    document.body.appendChild(a);
+                    a.style = "display: none";
+                    a.href = URL.createObjectURL(txtBlob);
+                    a.download = "image_download_link.txt";
+                    a.click();
+                    window.URL.revokeObjectURL(a.href);
+
+                    console.log('تم تحميل الملف النصي بنجاح!');
+                } else {
+                    console.log('لم يتم رفع صورة حتى الآن!');
+                }
+            }
         </script>
 
     </body>
+
 </html>
+
+
+
 
 
 <!-- footer
